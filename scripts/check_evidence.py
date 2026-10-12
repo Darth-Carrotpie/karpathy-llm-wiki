@@ -10,7 +10,8 @@ Report-only; never modifies files. Three sweeps:
    product names, and deliberate paraphrases will show up as suspects;
    judging them is the reader's job, not this script's.
 2. Evidence errors — articles that cannot be verified at all: a missing
-   Raw field on a non-archive article, Raw links that do not resolve,
+   Raw field on an article that is neither an archive page nor a plan
+   page (header line "Plan status:"), Raw links that do not resolve,
    or Raw links that escape raw/ (evidence must live in immutable raw/).
 3. Inventory — raw files that no article's Raw field references,
    excluding files whose ingest was logged as "no material".
@@ -29,7 +30,8 @@ The exit code carries no information; the report is the interface.
 
 Usage: check_evidence.py [project-root] [article.md ...]
 Defaults: project-root is the current directory; all wiki/**/*.md
-articles except index.md and log.md are checked. Article paths may be
+articles except the index.md and log.md of wiki/ and of wiki/planning/
+are checked. Article paths may be
 absolute or relative to the project root.
 """
 
@@ -54,11 +56,12 @@ NO_MATERIAL_HEADING_RE = re.compile(
     r"^## \[[^\]]*\]\s*ingest\s*\|\s*no material:\s*(\S+)", re.IGNORECASE
 )
 ARCHIVED_RE = re.compile(r"^>\s*Archived:")
+PLAN_RE = re.compile(r"^>\s*Plan status:")
 FENCE_OPEN_RE = re.compile(r"^ {0,3}(`{3,}|~{3,})(.*)$")
 FENCE_CLOSE_RE = re.compile(r"^ {0,3}(`{3,}|~{3,})[ \t]*$")
 WS_RE = re.compile(r"\s+")
 
-SKIP_FILES = {"index.md", "log.md"}
+SKIP_FILES = {"index.md", "log.md", "planning/index.md", "planning/log.md"}
 
 
 @dataclass(frozen=True)
@@ -292,7 +295,8 @@ def check_article(article: Path, root: Path) -> tuple[list[str], list[str]]:
     text = article.read_text(encoding="utf-8")
     links = raw_links_of(text)
     if not links:
-        if any(ARCHIVED_RE.match(line.strip()) for line in parse_document(text).header):
+        header = parse_document(text).header
+        if any(ARCHIVED_RE.match(line.strip()) or PLAN_RE.match(line.strip()) for line in header):
             return [], []
         return [], ["article has no Raw field"]
     raw_root = (root / "raw").resolve()

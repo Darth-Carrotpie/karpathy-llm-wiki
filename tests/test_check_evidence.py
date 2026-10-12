@@ -161,6 +161,15 @@ PLAIN_ARTICLE = """# Plain numbers
 There were 42 users; the ratio was 3.14; founded in 2026.
 """
 
+PLAN_ARTICLE = """# Sprint plan
+
+> Plan status: Approved
+> Approved: 2026-07-01
+> Audit: none
+
+Ship 999K-user onboarding with the "totally made up quote here" banner.
+"""
+
 ARCHIVE_ARTICLE = """# Old answer
 
 > Sources: [Ghostty](ghostty.md)
@@ -600,6 +609,33 @@ class NestedIndexLogTest(WikiTestCase):
         plain_wiki(self.root, "log.md", article)
         result = run_checker(self.root)
         self.assertIn("888K", result.stdout)
+
+    def test_planning_index_and_log_are_skipped(self):
+        make_wiki(self.root)
+        (self.root / "wiki" / "planning").mkdir()
+        (self.root / "wiki" / "planning" / "index.md").write_text("# Planning Index\n\n777K plans.\n")
+        (self.root / "wiki" / "planning" / "log.md").write_text("# Planning Log\n\n666K entries.\n")
+        result = run_checker(self.root)
+        self.assertNotIn("planning", result.stdout)
+
+
+class PlanPageTest(WikiTestCase):
+    def setUp(self):
+        super().setUp()
+        make_wiki(self.root)
+        (self.root / "wiki" / "planning").mkdir()
+
+    def test_plan_page_without_raw_is_legitimate(self):
+        (self.root / "wiki" / "planning" / "2026-07-01-sprint.md").write_text(PLAN_ARTICLE)
+        result = run_checker(self.root)
+        self.assertNotIn("999K", result.stdout)
+        self.assertNotIn("sprint", result.stdout)
+
+    def test_plan_status_in_body_does_not_exempt(self):
+        article = BODY_ARCHIVED_ARTICLE.replace("> Archived: 2025-01-01", "> Plan status: Approved")
+        (self.root / "wiki" / "planning" / "body.md").write_text(article)
+        result = run_checker(self.root)
+        self.assertIn("no Raw field", result.stdout)
 
 
 class BlockquoteQuoteTest(WikiTestCase):

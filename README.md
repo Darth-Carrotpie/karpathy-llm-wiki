@@ -18,12 +18,13 @@
 
 An **LLM wiki** is a knowledge system where the LLM maintains structured wiki pages instead of re-searching raw documents on every question. New sources are compiled into durable markdown pages, cross-references are updated over time, and answers cite the wiki pages that already contain the synthesized knowledge.
 
-This skill gives you three operations:
+This skill gives you four operations:
 
 | Operation | What it does | Output |
 |-----------|--------------|--------|
 | **Ingest** | Collects a source into `raw/`, triages it, then creates or updates wiki articles — or just logs it when nothing is new | New or updated wiki pages |
 | **Query** | Searches the wiki and answers with citations | Grounded answers linking to markdown pages |
+| **Plan** | Records an approved plan's high-level topics, its revisions (overwrite or change record, with an audit flag) and its outcome, under `wiki/planning/` with its own index and log | Dated plan pages with a status |
 | **Lint** | Checks index integrity, links, and wiki health | Auto-fixes plus reported issues |
 
 See [SKILL.md](SKILL.md) for the full skill specification.
@@ -89,6 +90,7 @@ your-project/
 ├── wiki/           ← Compiled knowledge pages maintained by the LLM
 │   ├── topic/
 │   │   └── concept-name.md
+│   ├── planning/   ← Plans, with their own index.md and log.md
 │   ├── index.md    ← Global table of contents
 │   └── log.md      ← Append-only operation log
 ```
