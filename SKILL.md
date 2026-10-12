@@ -76,6 +76,32 @@ After saving the raw file and before editing wiki/, search wiki/ with the source
 
 New, Update, and Disputed may be combined. No material is exclusive.
 
+#### Sources that still live in the project
+
+A source that remains in the repository after the ingest has exactly two valid dispositions:
+
+- **Transfer** — compile it, delete the source, and repoint everything that referenced it, all in the
+  same task.
+- **Leave it alone** — log it as No material and stop.
+
+Never compile it and leave the original in place. That ships two copies of the same knowledge, and they
+diverge from the next edit to either one onward.
+
+Before transferring, grep for what cites the source and **how**. A source cited by section number
+(`§4.1`, `section 2.3`) needs those citations repointed as part of the transfer, or the transfer is not
+done — the dangling references are worse than the duplication was. Let the citation sites shape the
+split: choose article boundaries so each cited section lands in exactly one article, and the repoint
+becomes a one-to-one map instead of a judgement call at every site.
+
+Shape decides atomization:
+
+- **A spec** — independent rule-sets, each separately citable — atomizes into one article per rule-set.
+- **A ledger or manifest** — an append target, or a lookup table keyed by id — transfers whole.
+  Splitting it destroys the append point or the lookup.
+
+Content that is purely a work list transfers only if the work is outstanding. A completed one is
+dropped, with a note in the relevant article recording that it existed.
+
 ### Compile (wiki/)
 
 Determine where the new content belongs:

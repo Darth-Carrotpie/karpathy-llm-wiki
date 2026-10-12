@@ -39,6 +39,8 @@ This is the `planning` branch of [Darth-Carrotpie/karpathy-llm-wiki](https://git
 | `scripts/check_evidence.py` | Plan pages (a `Plan status:` header line) are exempt from the grounding check, like archive pages; the planning index and log are skipped |
 | `tests/test_check_evidence.py` | Three tests for those two rules |
 
+**Also in this fork:** Triage gains "Sources that still live in the project". A source that stays in the repository after an ingest is either transferred (compiled, deleted, and every citation repointed in the same task) or left alone as No material, never compiled and kept, because two copies of the same knowledge diverge.
+
 Install this fork as a git clone of the branch ([Install](#install)), so the skill stays a repository you can pull, change and push independently of the projects that use it.
 
 ## What Is an LLM Wiki?
