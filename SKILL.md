@@ -1,6 +1,6 @@
 ---
 name: karpathy-llm-wiki
-description: "Use when building or maintaining a personal LLM-powered knowledge base. Triggers: ingesting sources into a wiki, querying wiki knowledge, linting wiki quality, recording a plan in the wiki (a sprint plan approved, significantly revised, or implemented), 'add to wiki', 'what do I know about', or any mention of 'LLM wiki' or 'Karpathy wiki'."
+description: "Use when building or maintaining a personal LLM-powered knowledge base. Triggers: ingesting sources into a wiki, querying wiki knowledge, linting wiki quality, recording or updating a plan in the wiki, 'add to wiki', 'what do I know about', or any mention of 'LLM wiki' or 'Karpathy wiki'. Also use unprompted in any project that has a wiki: right after the user approves a sprint's implementation plan, when an approved plan changes significantly, and when a plan's implementation finishes."
 ---
 
 # Karpathy LLM Wiki
@@ -175,6 +175,8 @@ Triggers:
 - A plan's implementation finishes, or the plan is abandoned or replaced → **Close**.
 - The user asks to record, update, or close a plan.
 
+The first three are standing duties of whichever agent runs the plan: act on them unprompted, without waiting for the user to ask, and without project instruction files having to repeat them. They apply only in a project that already has a wiki (`wiki/index.md` exists). Without one, plan as usual and write nothing, unless the user asks for the plan to be recorded; that request initializes the wiki as below.
+
 ### Layout
 
 ```text
@@ -185,7 +187,7 @@ wiki/planning/
 └── backlog-slug.md            ← Optional standing to-do lists (ordinary articles)
 ```
 
-The planning index is a branch of the global index. `wiki/index.md` holds a single `planning` row linking to `planning/index.md` and never lists plans or backlogs one by one. Look plans up through the planning index, and link to a plan from an article only when the link is load-bearing. Plans churn through statuses; the branch keeps that churn out of the global index.
+The planning index is a branch of the global index: the one entry point to every upcoming, active, and finished plan. `wiki/index.md` holds a single `planning` row linking to `planning/index.md` and never lists plans or backlogs one by one. Start every plan lookup at the planning index rather than searching for plan files, and avoid linking plan pages directly from outside `wiki/planning/`; link the planning index instead. Plans move from Active to Closed and get superseded; the index stays put, so links to it never go stale.
 
 Initialization: on the first plan operation, create what is missing, never overwriting:
 - `wiki/planning/index.md` — see `references/planning-index-template.md`
