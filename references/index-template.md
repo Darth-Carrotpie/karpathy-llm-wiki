@@ -1,5 +1,7 @@
 # Knowledge Base Index
 
+Operation history: [Wiki Log](log.md). {When planning exists, also link [Planning Log](planning/log.md). These are complete at fixed paths; no separate entry discovery is required.}
+
 ## {topic-name}
 
 {One-line description of this topic.}

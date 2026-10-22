@@ -19,13 +19,60 @@ Three layers, all under the user's project root:
 
 **wiki/** — Compiled knowledge articles. You have full ownership. Organized by topic subdirectories, one level only: `wiki/<topic>/<article>.md`. Contains two special files:
 - `wiki/index.md` — Global index. One row per article, grouped by topic, with link + summary + Updated date.
-- `wiki/log.md` — Append-only operation log.
+- `wiki/log.md` — Complete, append-only operation log at its canonical reading path.
 
 One topic directory is reserved: `wiki/planning/` holds agreed plans with their own `index.md` and `log.md`, and the global index links only to that planning index (see Plan).
 
 **SKILL.md** (this file) — Schema layer. Defines structure and workflow rules.
 
 Templates live in `references/` relative to this file. Read them when you need the exact format for raw files, articles, archive pages, plan pages, the index, or the planning index.
+
+### Concurrent operation logs
+
+Keep the complete operation history at the fixed, canonical paths: `wiki/log.md`
+and `wiki/planning/log.md`. Agents and humans read these files directly; no search,
+fragment discovery, aggregation or refresh command is needed. Link both from the
+global index when planning exists. Never split them into per-operation files.
+
+Append every operation through `python <skill-dir>/scripts/wiki_log.py <project-root>`
+(add `--planning` for plan operations), passing one entry as UTF-8 stdin or with
+`--entry-file <utf8-file>`. Never hand-append. The helper takes an OS lock, reads
+the latest file and replaces it atomically, preserving existing content. OS locks
+release on process exit; a busy lock times out with an error. It adds one hidden
+UTC-timestamp-and-UUID comment after the heading to identify the complete entry.
+Heading dates follow the user's timezone. Keep IDs when moving or resolving an entry.
+
+For branch/worktree merges, register the whole-entry driver once per clone:
+`python <skill-dir>/scripts/wiki_log.py <project-root> --install-merge-driver`.
+The repository's `.gitattributes` must contain:
+
+```gitattributes
+wiki/log.md merge=wiki-log
+wiki/planning/log.md merge=wiki-log
+```
+
+Git treats all helper-written entries as a growing set keyed by ID, keeping each
+heading and body together. Entries may move relative to the merge base after
+earlier merges; compare identity and content, never require a literal base prefix.
+Both sides must preserve the legacy section and every base entry unchanged.
+Shared IDs are deduplicated; differing content under one ID, deletions, historical
+edits, unresolved markers and unmarked appends fail for manual review. Entries
+are sorted by their IDs for deterministic results, not to establish causal order.
+Without local driver registration, Git falls back to ordinary text conflicts.
+Register again if the skill or Python location changes; never use line-union merge.
+
+Across machines, the driver runs on the machine performing the local merge.
+Every merging machine needs the updated skill and local registration; pushing
+the project does not distribute either. Fetch and merge remote changes before
+pushing a combined result, then reread the canonical log for the new checkout
+state. This mechanism covers local Git merges followed by push; it does not
+install a driver on a hosting service for server-side pull-request merges.
+
+The helper requires the log file to exist; normal Initialization creates it.
+`--read` simply prints the same canonical file for CLI compatibility. No evidence
+checker changes or reserved fragment directories are needed. Writers must all
+use the helper; direct edits, Git operations, shared indexes and article edits
+still require coordination.
 
 ### Initialization
 
@@ -131,7 +178,7 @@ Archive pages are never cascade-updated (they are point-in-time snapshots).
 
 Update `wiki/index.md`: add or update entries for every touched article — except articles under `wiki/planning/`, whose entries live in `wiki/planning/index.md` (see Plan). When adding a new topic section, include a one-line description. The Updated date reflects when the article's knowledge content last changed, not the file system timestamp. See `references/index-template.md` for format.
 
-Append to `wiki/log.md`:
+Append to `wiki/log.md` through the helper (see Concurrent operation logs):
 
 ```
 ## [YYYY-MM-DD] ingest | <primary article title>
@@ -155,7 +202,7 @@ Use only when the user explicitly asks to research a topic or gather sources int
 
 1. Split the topic into a few angles. For each, search with a wide net — official names, abbreviations, and synonyms, not just the literal keywords.
 2. For any core claim you expect to conclude, deliberately search the opposing side: failures, criticism, failed replications.
-3. Save selected sources to raw/ as usual. Searching may run in parallel; compilation must not — compile one source at a time, because index.md, log.md, and cascade updates are shared state.
+3. Save selected sources to raw/ as usual. Searching may run in parallel; compilation must not — compile one source at a time, because index.md and cascade-updated articles are shared state; the log helper only coordinates log writes.
 
 ---
 
@@ -184,7 +231,7 @@ When the user explicitly asks to archive or save the answer to the wiki:
    - Place in the most relevant topic directory.
 2. Always create a new page. Never merge into existing articles (archive content is a synthesized answer, not raw material).
 3. Update `wiki/index.md`. Prefix the Summary with `[Archived]`.
-4. Append to `wiki/log.md`:
+4. Append to `wiki/log.md` through the helper (see Concurrent operation logs):
    ```
    ## [YYYY-MM-DD] query | Archived: <page title>
    ```
@@ -208,7 +255,7 @@ The first three are standing duties of whichever agent runs the plan: act on the
 ```text
 wiki/planning/
 ├── index.md                   ← Planning index: every plan and backlog, with status
-├── log.md                     ← Planning log: append-only, plan operations only
+├── log.md                     ← Complete planning log: append through the helper
 ├── YYYY-MM-DD-plan-slug.md    ← One page per plan, dated by its approval
 └── backlog-slug.md            ← Optional standing to-do lists (ordinary articles)
 ```
@@ -230,7 +277,7 @@ Run right after the user approves the plan, before implementation starts.
 2. Write the high-level topics only: the goal, scope in and out, one line per work item, the decisions taken and why, open questions, risks. No steps, file lists or code — the page should read in a minute. If the full plan lives in a durable file, link it in Sources.
 3. Header: `Plan status: Approved`, Approved and Updated set to today, `Audit: none` unless the plan itself calls for an audit.
 4. Add a row under Active in `wiki/planning/index.md`.
-5. Append to `wiki/planning/log.md`:
+5. Append to `wiki/planning/log.md` through the helper (`--planning`):
    ```
    ## [YYYY-MM-DD] approved | <Plan title>
    - Page: wiki/planning/<file>.md
@@ -249,7 +296,7 @@ For a significant change, **ask the user** which form the record takes. Never ch
 Either way:
 1. Refresh Updated in the page header and in the planning index row.
 2. Decide the audit flag (below) and write it in the header, the Changes entry, and the index row.
-3. Append to `wiki/planning/log.md`:
+3. Append to `wiki/planning/log.md` through the helper (`--planning`):
    ```
    ## [YYYY-MM-DD] revised | <Plan title>
    - Mode: <Overwrite | Change record>
@@ -272,7 +319,7 @@ Run when the plan's implementation finishes, or when the user abandons or replac
    Set Closed to today and refresh Updated.
 2. Add the Outcome section: what shipped, where it deviated from the plan, and what was deferred and where it went.
 3. Update the planning index row and move it from Active to Closed.
-4. Append to `wiki/planning/log.md`:
+4. Append to `wiki/planning/log.md` through the helper (`--planning`):
    ```
    ## [YYYY-MM-DD] closed | <Plan title>
    - Status: <Implemented | Partially implemented | Dropped | Superseded>
@@ -353,7 +400,7 @@ These rely on your judgment. Report findings without auto-fixing:
 
 ### Post-Lint
 
-Append to `wiki/log.md`:
+Append to `wiki/log.md` through the helper (see Concurrent operation logs):
 
 ```
 ## [YYYY-MM-DD] lint | <N> issues found, <M> auto-fixed
@@ -367,4 +414,4 @@ Append to `wiki/log.md`:
 - wiki/ supports one level of topic subdirectories only. No deeper nesting.
 - Today's date for log entries, Collected dates, and Archived dates. Updated dates reflect when the article's knowledge content last changed. Published dates come from the source (use `Unknown` when unavailable).
 - Inside wiki/ files, all markdown links use paths relative to the current file. In conversation output, use project-root-relative paths (e.g., `wiki/topic/article.md`).
-- Ingest updates both `wiki/index.md` and `wiki/log.md` (a No material ingest updates only the log). Archive (from Query) updates both. Lint updates `wiki/log.md` (and `wiki/index.md` or `wiki/planning/index.md` only when auto-fixing index entries). Plan operations update `wiki/planning/` and the Updated date of the `planning` row in `wiki/index.md`, never `wiki/log.md`. Plain queries do not write any files.
+- Ingest updates `wiki/index.md` and appends through the helper to `wiki/log.md` (a No material ingest updates only the log). Archive (from Query) updates both. Lint appends through the helper to `wiki/log.md` (and updates `wiki/index.md` or `wiki/planning/index.md` only when auto-fixing index entries). Plan operations append through the helper to `wiki/planning/log.md` and update `wiki/planning/` and the Updated date of the `planning` row in `wiki/index.md`, never the main log. Plain queries do not write any files.

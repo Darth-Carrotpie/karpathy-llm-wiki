@@ -43,6 +43,14 @@ This is the `planning` branch of [Darth-Carrotpie/karpathy-llm-wiki](https://git
 
 Install this fork as a git clone of the branch ([Install](#install)), so the skill stays a repository you can pull, change and push independently of the projects that use it.
 
+**Concurrent logs.** `wiki/log.md` and `wiki/planning/log.md` remain complete and
+directly readable. Append with `scripts/wiki_log.py PROJECT_ROOT` (UTF-8 stdin or
+`--entry-file FILE`; `--planning` selects the planning log). The helper locks local
+writes and adds hidden entry IDs. Register its whole-entry Git merge driver with
+`--install-merge-driver` in each clone and select it in `.gitattributes`; without
+registration, ordinary Git conflicts remain. See Concurrent operation logs in
+`SKILL.md`. Shared articles and indexes still need coordination.
+
 ## What Is an LLM Wiki?
 
 An **LLM wiki** is a knowledge system where the LLM maintains structured wiki pages instead of re-searching raw documents on every question. New sources are compiled into durable markdown pages, cross-references are updated over time, and answers cite the wiki pages that already contain the synthesized knowledge.
