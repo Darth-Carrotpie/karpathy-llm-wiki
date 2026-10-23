@@ -71,8 +71,28 @@ install a driver on a hosting service for server-side pull-request merges.
 The helper requires the log file to exist; normal Initialization creates it.
 `--read` simply prints the same canonical file for CLI compatibility. No evidence
 checker changes or reserved fragment directories are needed. Writers must all
-use the helper; direct edits, Git operations, shared indexes and article edits
-still require coordination.
+use the helper; direct edits, Git operations and article edits still require
+coordination. Index updates use the separate helper below.
+
+### Concurrent index updates
+
+Keep `wiki/index.md` and `wiki/planning/index.md` complete and directly readable.
+For every update, take a temporary snapshot with `scripts/wiki_index.py`, edit a
+separate copy, then publish with `--base-file` and `--updated-file`. Never edit
+the live index or replace it with a stale full-file copy. This applies to Ingest,
+Archive, Plan and Lint; initial creation still follows Initialization.
+
+The helper locks, rereads and three-way merges against the original snapshot,
+then replaces the file atomically. Rows are keyed by their normalized relative
+link target, including across planning sections. Different row edits and new
+topics combine; identical edits appear once. Competing edits to one row,
+delete-versus-edit, move-versus-edit and conflicting topic prose stop for review.
+Dates never choose a winner. Authored summaries and topic descriptions survive.
+
+Register its `wiki-index` Git driver on every locally merging clone, alongside
+the log driver. See [Concurrent index writes and merges](references/concurrent-indexes.md)
+for commands, attributes, supported tables and conflict handling. Other index
+formats and concurrent Git operations still require coordination.
 
 ### Initialization
 
@@ -202,7 +222,7 @@ Use only when the user explicitly asks to research a topic or gather sources int
 
 1. Split the topic into a few angles. For each, search with a wide net — official names, abbreviations, and synonyms, not just the literal keywords.
 2. For any core claim you expect to conclude, deliberately search the opposing side: failures, criticism, failed replications.
-3. Save selected sources to raw/ as usual. Searching may run in parallel; compilation must not — compile one source at a time, because index.md and cascade-updated articles are shared state; the log helper only coordinates log writes.
+3. Save selected sources to raw/ as usual. Searching may run in parallel; compilation must not — compile one source at a time because cascade-updated articles are shared state. The helpers coordinate log and supported index writes, not article content.
 
 ---
 

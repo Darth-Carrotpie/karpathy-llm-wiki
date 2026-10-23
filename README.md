@@ -49,7 +49,14 @@ directly readable. Append with `scripts/wiki_log.py PROJECT_ROOT` (UTF-8 stdin o
 writes and adds hidden entry IDs. Register its whole-entry Git merge driver with
 `--install-merge-driver` in each clone and select it in `.gitattributes`; without
 registration, ordinary Git conflicts remain. See Concurrent operation logs in
-`SKILL.md`. Shared articles and indexes still need coordination.
+`SKILL.md`. Shared article edits still need coordination.
+
+**Concurrent indexes.** `wiki/index.md` and `wiki/planning/index.md` also stay
+complete at their known paths. `scripts/wiki_index.py` publishes edits from an
+original snapshot under a lock; its companion Git driver merges independent
+rows by link target across machines. Competing edits to the same row require
+review, including a plan moved on one side and edited on the other. Register
+the driver per merging clone; see [commands and limits](references/concurrent-indexes.md).
 
 ## What Is an LLM Wiki?
 
