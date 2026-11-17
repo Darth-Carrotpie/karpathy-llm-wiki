@@ -1,0 +1,7 @@
+{
+  "name": "carrotpie-skills",
+  "owner": { "name": "Darth-Carrotpie" },
+  "plugins": [
+    { "name": "llm-wiki", "source": "./", "description": "Karpathy-style LLM wiki skill" }
+  ]
+}

@@ -7,7 +7,7 @@ import unittest
 from unittest.mock import patch
 
 
-SCRIPT = Path(__file__).resolve().parent.parent / "scripts" / "wiki_index.py"
+SCRIPT = Path(__file__).resolve().parent.parent / "skills" / "karpathy-llm-wiki" / "scripts" / "wiki_index.py"
 sys.path.insert(0, str(SCRIPT.parent))
 import wiki_index
 

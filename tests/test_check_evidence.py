@@ -4,7 +4,7 @@ import tempfile
 import unittest
 from pathlib import Path
 
-SCRIPT = Path(__file__).resolve().parent.parent / "scripts" / "check_evidence.py"
+SCRIPT = Path(__file__).resolve().parent.parent / "skills" / "karpathy-llm-wiki" / "scripts" / "check_evidence.py"
 
 RAW_CONTENT = """# Ghostty Update
 

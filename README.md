@@ -32,31 +32,31 @@ This is the `planning` branch of [Darth-Carrotpie/karpathy-llm-wiki](https://git
 
 | File | Change |
 |------|--------|
-| `SKILL.md` | The Plan section: triggers, layout, Record, Revise, Close, and rules. Post-Ingest, Lint and Conventions now know about the planning index |
-| `references/plan-template.md` | New: the plan page — status header, Goal, Scope, Work Items, Decisions, Risks, Changes, Outcome |
-| `references/planning-index-template.md` | New: the planning index — Active, Closed, Backlogs |
-| `references/index-template.md` | The single `planning` row the global index carries |
-| `scripts/check_evidence.py` | Plan pages (a `Plan status:` header line) are exempt from the grounding check, like archive pages; the planning index and log are skipped |
+| `skills/karpathy-llm-wiki/SKILL.md` | The Plan section: triggers, layout, Record, Revise, Close, and rules. Post-Ingest, Lint and Conventions now know about the planning index |
+| `skills/karpathy-llm-wiki/references/plan-template.md` | New: the plan page — status header, Goal, Scope, Work Items, Decisions, Risks, Changes, Outcome |
+| `skills/karpathy-llm-wiki/references/planning-index-template.md` | New: the planning index — Active, Closed, Backlogs |
+| `skills/karpathy-llm-wiki/references/index-template.md` | The single `planning` row the global index carries |
+| `skills/karpathy-llm-wiki/scripts/check_evidence.py` | Plan pages (a `Plan status:` header line) are exempt from the grounding check, like archive pages; the planning index and log are skipped |
 | `tests/test_check_evidence.py` | Three tests for those two rules |
 
 **Also in this fork:** Triage gains "Sources that still live in the project". A source that stays in the repository after an ingest is either transferred (compiled, deleted, and every citation repointed in the same task) or left alone as No material, never compiled and kept, because two copies of the same knowledge diverge.
 
-Install this fork as a git clone of the branch ([Install](#install)), so the skill stays a repository you can pull, change and push independently of the projects that use it.
+Install this fork as the `llm-wiki` plugin ([Install](#install)).
 
 **Concurrent logs.** `wiki/log.md` and `wiki/planning/log.md` remain complete and
-directly readable. Append with `scripts/wiki_log.py PROJECT_ROOT` (UTF-8 stdin or
+directly readable. Append with `skills/karpathy-llm-wiki/scripts/wiki_log.py PROJECT_ROOT` (UTF-8 stdin or
 `--entry-file FILE`; `--planning` selects the planning log). The helper locks local
 writes and adds hidden entry IDs. Register its whole-entry Git merge driver with
 `--install-merge-driver` in each clone and select it in `.gitattributes`; without
 registration, ordinary Git conflicts remain. See Concurrent operation logs in
-`SKILL.md`. Shared article edits still need coordination.
+`skills/karpathy-llm-wiki/SKILL.md`. Shared article edits still need coordination.
 
 **Concurrent indexes.** `wiki/index.md` and `wiki/planning/index.md` also stay
-complete at their known paths. `scripts/wiki_index.py` publishes edits from an
+complete at their known paths. `skills/karpathy-llm-wiki/scripts/wiki_index.py` publishes edits from an
 original snapshot under a lock; its companion Git driver merges independent
 rows by link target across machines. Competing edits to the same row require
 review, including a plan moved on one side and edited on the other. Register
-the driver per merging clone; see [commands and limits](references/concurrent-indexes.md).
+the driver per merging clone; see [commands and limits](skills/karpathy-llm-wiki/references/concurrent-indexes.md).
 
 ## What Is an LLM Wiki?
 
@@ -71,7 +71,7 @@ This skill gives you four operations:
 | **Plan** | Records an approved plan's high-level topics, its revisions (overwrite or change record, with an audit flag) and its outcome, under `wiki/planning/` with its own index and log | Dated plan pages with a status |
 | **Lint** | Checks index integrity, links, and wiki health | Auto-fixes plus reported issues |
 
-See [SKILL.md](SKILL.md) for the full skill specification.
+See [SKILL.md](skills/karpathy-llm-wiki/SKILL.md) for the full skill specification.
 
 ## LLM Wiki vs RAG
 
@@ -94,26 +94,10 @@ See [examples/](examples/) for sample wiki pages, source files, and operation lo
 
 ## Install
 
-Install this fork as a git clone of its `planning` branch, so the skill stays a repository you can update and maintain:
+Add the marketplace `Darth-Carrotpie/karpathy-llm-wiki` on claude.ai under Customize › Plugins, or run this in Claude Code:
 
-```bash
-git clone -b planning https://github.com/Darth-Carrotpie/karpathy-llm-wiki.git ~/.claude/skills/karpathy-llm-wiki
-```
-
-Claude Code and GitHub Copilot in VS Code read `~/.claude/skills/`. Codex reads `~/.agents/skills/`, so link the same clone there rather than copying it:
-
-```bash
-ln -s ~/.claude/skills/karpathy-llm-wiki ~/.agents/skills/karpathy-llm-wiki    # macOS / Linux
-mklink /J "%USERPROFILE%\.agents\skills\karpathy-llm-wiki" "%USERPROFILE%\.claude\skills\karpathy-llm-wiki"    # Windows cmd
-```
-
-Keep one clone. A second copy committed into a project's `.claude/skills/`, `.agents/skills/` or `.github/skills/` goes stale. Codex lists same-named skills side by side instead of merging them, so the stale copy can be the one an agent picks.
-
-Update with `git -C ~/.claude/skills/karpathy-llm-wiki pull`. To take upstream changes, add the original as a remote, then merge:
-
-```bash
-git remote add upstream https://github.com/Astro-Han/karpathy-llm-wiki.git
-git fetch upstream && git merge upstream/main
+```text
+/plugin install llm-wiki --marketplace Darth-Carrotpie/karpathy-llm-wiki
 ```
 
 Upstream without the Plan operation installs with `npx add-skill Astro-Han/karpathy-llm-wiki`.
@@ -167,7 +151,7 @@ Each new source can update multiple pages, strengthen cross-references, and reco
 
 ## Tool Compatibility
 
-This skill follows the [agentskills.io](https://agentskills.io) open standard. The install methods below fetch upstream; for this fork, use the git clone in [Install](#install).
+This skill follows the [agentskills.io](https://agentskills.io) open standard. The install methods below fetch upstream; for this fork, use the plugin in [Install](#install).
 
 | Tool | Install method |
 |------|----------------|

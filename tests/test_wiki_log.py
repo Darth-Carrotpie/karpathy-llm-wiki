@@ -8,7 +8,7 @@ import unittest
 from unittest.mock import patch
 
 
-SCRIPT = Path(__file__).resolve().parent.parent / "scripts" / "wiki_log.py"
+SCRIPT = Path(__file__).resolve().parent.parent / "skills" / "karpathy-llm-wiki" / "scripts" / "wiki_log.py"
 SPEC = importlib.util.spec_from_file_location("wiki_log", SCRIPT)
 wiki_log = importlib.util.module_from_spec(SPEC)
 SPEC.loader.exec_module(wiki_log)
