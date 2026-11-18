@@ -100,6 +100,16 @@ Add the marketplace `Darth-Carrotpie/karpathy-llm-wiki` on claude.ai under Custo
 /plugin install llm-wiki --marketplace Darth-Carrotpie/karpathy-llm-wiki
 ```
 
+### Codex
+
+```bash
+codex plugin marketplace add Darth-Carrotpie/karpathy-llm-wiki
+codex plugin add llm-wiki@carrotpie-skills
+codex plugin marketplace upgrade carrotpie-skills    # pull updates
+```
+
+Start a new Codex session after installing or upgrading.
+
 Upstream without the Plan operation installs with `npx add-skill Astro-Han/karpathy-llm-wiki`.
 
 Works with any tool that supports the [Agent Skills](https://agentskills.io) standard.

@@ -1,0 +1,6 @@
+{
+  "$schema": "https://agent-plugins.org/schemas/1.0.0/plugin.schema.json",
+  "name": "llm-wiki",
+  "description": "Karpathy-style LLM wiki: ingest, query, lint and plan in a project's raw/ + wiki/ folders.",
+  "author": { "name": "Darth-Carrotpie" }
+}
