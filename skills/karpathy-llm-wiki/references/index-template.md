@@ -1,6 +1,6 @@
 # Knowledge Base Index
 
-Operation history: [Wiki Log](log.md). {When planning exists, also link [Planning Log](planning/log.md). These are complete at fixed paths; no separate entry discovery is required.}
+Operation history: [Wiki Log](log.md). {When planning exists, also link [Planning Log](planning/log.md). These stay at fixed paths; older history sits in the sealed segments each log's header lists, so no separate entry discovery is required.}
 
 ## {topic-name}
 

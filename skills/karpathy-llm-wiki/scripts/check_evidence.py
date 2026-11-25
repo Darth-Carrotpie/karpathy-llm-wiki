@@ -31,7 +31,7 @@ The exit code carries no information; the report is the interface.
 Usage: check_evidence.py [project-root] [article.md ...]
 Defaults: project-root is the current directory; all wiki/**/*.md
 articles except the index.md and log.md of wiki/ and of wiki/planning/
-are checked. Article paths may be
+and their sealed log segments (log-sealed-YYYY-MM-DD.md) are checked. Article paths may be
 absolute or relative to the project root.
 """
 
@@ -62,6 +62,11 @@ FENCE_CLOSE_RE = re.compile(r"^ {0,3}(`{3,}|~{3,})[ \t]*$")
 WS_RE = re.compile(r"\s+")
 
 SKIP_FILES = {"index.md", "log.md", "planning/index.md", "planning/log.md"}
+SEGMENT_RE = re.compile(r"(?:planning/)?log-sealed-\d{4}-\d{2}-\d{2}\.md")
+
+
+def skipped(relative: str) -> bool:
+    return relative in SKIP_FILES or bool(SEGMENT_RE.fullmatch(relative))
 
 
 @dataclass(frozen=True)
@@ -321,7 +326,7 @@ def check_article(article: Path, root: Path) -> tuple[list[str], list[str]]:
 
 def iter_articles(wiki_dir: Path):
     for path in sorted(wiki_dir.rglob("*.md")):
-        if path.relative_to(wiki_dir).as_posix() not in SKIP_FILES:
+        if not skipped(path.relative_to(wiki_dir).as_posix()):
             yield path
 
 
@@ -351,7 +356,9 @@ def unreferenced_raws(root: Path) -> list[str]:
     if not raw_dir.is_dir():
         return []
     referenced = referenced_raws(root)
-    disposed = no_material_paths(root / "wiki" / "log.md")
+    disposed = set()
+    for log_file in [root / "wiki" / "log.md", *sorted((root / "wiki").glob("log-sealed-*.md"))]:
+        disposed |= no_material_paths(log_file)
     missing = []
     for path in sorted(raw_dir.rglob("*.md")):
         if path.resolve() not in referenced and path.relative_to(root).as_posix() not in disposed:
@@ -372,7 +379,7 @@ def main(argv: list[str]) -> int:
         if not path.is_absolute():
             path = root / path
         try:
-            if path.resolve().relative_to(wiki_dir).as_posix() in SKIP_FILES:
+            if skipped(path.resolve().relative_to(wiki_dir).as_posix()):
                 print(f"warning: {arg} is an index/log file, skipping", file=sys.stderr)
                 continue
         except ValueError:

@@ -16,10 +16,15 @@ ENTRY = "## [2026-10-22] ingest | Shared title\n- Disposition: Update\n"
 BASE = "# Wiki Log\n\nHistorical entry.\n"
 
 
-def record(number, body):
-    return (f"## [2026-10-22] ingest | Shared title\n"
+def record(number, body, day="2026-10-22"):
+    return (f"## [{day}] ingest | Shared title\n"
             f"<!-- wiki-log-id: 2026-10-22T12000000000{number}Z-{'a' * 32} -->\n"
             f"- Disposition: Update\n\n{body}\n")
+
+
+ROTATABLE = ("# Wiki Log\n\n## [2026-09-10] ingest | Legacy one\n- Disposition: New\n\n"
+             "## [2026-10-30] lint | Legacy two\n\n" + record(1, "Old", "2026-10-01") + "\n"
+             + record(2, "Recent", "2026-11-05"))
 
 
 class WikiLogTest(unittest.TestCase):
@@ -181,6 +186,89 @@ class WikiLogTest(unittest.TestCase):
                                         capture_output=True, text=True)
                 self.assertNotEqual(result.returncode, 0)
                 self.assertEqual(files[1].read_bytes(), before)
+
+    def rotated(self, text, before):
+        self.log.write_text(text, encoding="utf-8", newline="\n")
+        segment, _ = wiki_log.rotate_log(self.log, before)
+        return self.log.read_text(encoding="utf-8"), segment
+
+    def test_rotate_moves_old_entries_verbatim_and_seals_them(self):
+        live, segment = self.rotated(ROTATABLE, "2026-10-15")
+        sealed = segment.read_text(encoding="utf-8")
+        self.assertEqual(segment.name, "log-sealed-2026-10-15.md")
+        for text in ("Legacy one", "Old", record(1, "Old", "2026-10-01")):
+            self.assertIn(text, sealed)
+            self.assertNotIn(text, live)
+        self.assertIn("Legacy two", live)
+        self.assertIn(record(2, "Recent", "2026-11-05"), live)
+        self.assertRegex(live, r"\A# Wiki Log\n\n- Sealed before 2026-10-15: \[log-sealed-2026-10-15\.md\]")
+        self.assertEqual(wiki_log.verify_seals(self.log), [])
+        self.assertEqual(self.run_cli("", "--verify").returncode, 0)
+        # The next append and a later rotation still work on the sealed log.
+        self.assertEqual(self.run_cli(ENTRY.replace("2026-10-22", "2026-11-20")).returncode, 0)
+        result = self.run_cli("", "--rotate", "2026-11-01")
+        self.assertEqual(result.returncode, 0, result.stderr)
+        live = self.log.read_text(encoding="utf-8")
+        self.assertEqual(len(wiki_log.SEAL.findall(live)), 2)
+        self.assertNotIn("Legacy two", live)
+        self.assertEqual(wiki_log.verify_seals(self.log), [])
+
+    def test_rotate_refusals_leave_the_log_unchanged(self):
+        self.log.write_text(ROTATABLE, encoding="utf-8", newline="\n")
+        wiki_log.rotate_log(self.log, "2026-10-15")
+        before = self.log.read_bytes()
+        for cutoff in ("2026-09-01", "2026-10-15", "2026-10-02", "not-a-date"):
+            with self.subTest(cutoff=cutoff):
+                result = self.run_cli("", "--rotate", cutoff)
+                self.assertNotEqual(result.returncode, 0)
+                self.assertEqual(before, self.log.read_bytes())
+        self.assertEqual(sorted(p.name for p in self.wiki.iterdir()), ["log-sealed-2026-10-15.md", "log.md"])
+
+    def test_verify_detects_edited_or_missing_segments(self):
+        _, segment = self.rotated(ROTATABLE, "2026-10-15")
+        segment.write_bytes(segment.read_bytes().replace(b"\n", b"\r\n"))
+        self.assertEqual(wiki_log.verify_seals(self.log), [])
+        segment.write_text(segment.read_text(encoding="utf-8") + "edit\n", encoding="utf-8")
+        self.assertEqual(self.run_cli("", "--verify").returncode, 1)
+        segment.unlink()
+        self.assertIn("missing sealed segment", wiki_log.verify_seals(self.log)[0])
+
+    def test_merge_accepts_a_rotation_on_one_side(self):
+        ours, _ = self.rotated(ROTATABLE, "2026-10-15")
+        theirs = ROTATABLE + "\n" + record(3, "Appended elsewhere", "2026-11-25")
+        for merged in (wiki_log.merge_logs(ROTATABLE, ours, theirs),
+                       wiki_log.merge_logs(ROTATABLE, theirs, ours)):
+            self.assertEqual(merged, ours + "\n" + record(3, "Appended elsewhere", "2026-11-25"))
+        # A later merge from a branch that still predates the rotation keeps the seal.
+        stale = ROTATABLE + "\n" + record(4, "Late branch", "2026-10-10")
+        again = wiki_log.merge_logs(ROTATABLE, merged, stale)
+        self.assertIn("Late branch", again)
+        self.assertNotIn("Legacy one", again)
+        self.assertEqual(len(wiki_log.SEAL.findall(again)), 1)
+
+    def test_merge_rejects_unsealed_deletion_and_divergent_rotations(self):
+        ours, _ = self.rotated(ROTATABLE, "2026-10-15")
+        dropped_recent = ours.replace(record(2, "Recent", "2026-11-05"), "")
+        theirs_segment = self.wiki / "log-sealed-2026-10-15.md"
+        theirs_segment.unlink()
+        theirs, _ = self.rotated(ROTATABLE, "2026-10-20")
+        for left, right in ((dropped_recent, ROTATABLE), (ours, theirs),
+                            (ours.replace("sha256:", "sha256:0"), ROTATABLE)):
+            with self.subTest(left=left[:80]):
+                with self.assertRaises(ValueError):
+                    wiki_log.merge_logs(ROTATABLE, left, right)
+
+    def test_no_material_inventory_reads_sealed_segments(self):
+        raw = self.root / "raw" / "t"
+        raw.mkdir(parents=True)
+        (raw / "orphan.md").write_text("# No material\n", encoding="utf-8")
+        result = self.run_cli("## [2026-10-22] ingest | no material: raw/t/orphan.md\n- Disposition: No material\n")
+        self.assertEqual(result.returncode, 0, result.stderr)
+        self.assertEqual(self.run_cli("", "--rotate", "2026-10-23").returncode, 0)
+        checker = SCRIPT.with_name("check_evidence.py")
+        result = subprocess.run([sys.executable, "-B", str(checker), str(self.root)],
+                                capture_output=True, text=True)
+        self.assertIn("0 evidence error(s), 0 unreferenced raw file(s)", result.stdout)
 
     def git(self, *args, input=None):
         result = subprocess.run(["git", "-C", str(self.root), *args],

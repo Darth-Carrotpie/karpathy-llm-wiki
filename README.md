@@ -51,6 +51,12 @@ writes and adds hidden entry IDs. Register its whole-entry Git merge driver with
 registration, ordinary Git conflicts remain. See Concurrent operation logs in
 `skills/karpathy-llm-wiki/SKILL.md`. Shared article edits still need coordination.
 
+**Log rotation.** On request or as an approved maintenance item, `--rotate YYYY-MM-DD`
+moves entries dated before the cutoff, verbatim, into an immutable
+`log-sealed-YYYY-MM-DD.md` beside the log and records its SHA-256 in the live log's
+header; `--verify` rechecks every seal. The merge driver accepts a rotation made on
+one branch, and the evidence checker reads No material entries from the segments.
+
 **Concurrent indexes.** `wiki/index.md` and `wiki/planning/index.md` also stay
 complete at their known paths. `skills/karpathy-llm-wiki/scripts/wiki_index.py` publishes edits from an
 original snapshot under a lock; its companion Git driver merges independent

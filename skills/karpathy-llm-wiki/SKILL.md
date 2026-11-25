@@ -19,7 +19,7 @@ Three layers, all under the user's project root:
 
 **wiki/** — Compiled knowledge articles. You have full ownership. Organized by topic subdirectories, one level only: `wiki/<topic>/<article>.md`. Contains two special files:
 - `wiki/index.md` — Global index. One row per article, grouped by topic, with link + summary + Updated date.
-- `wiki/log.md` — Complete, append-only operation log at its canonical reading path.
+- `wiki/log.md` — Append-only operation log at its canonical reading path. With the sealed segments its header lists (see Rotating a log), it holds the complete history.
 
 One topic directory is reserved: `wiki/planning/` holds agreed plans with their own `index.md` and `log.md`, and the global index links only to that planning index (see Plan).
 
@@ -29,10 +29,11 @@ Templates live in `references/` relative to this file. Read them when you need t
 
 ### Concurrent operation logs
 
-Keep the complete operation history at the fixed, canonical paths: `wiki/log.md`
+Keep the operation history at the fixed, canonical paths: `wiki/log.md`
 and `wiki/planning/log.md`. Agents and humans read these files directly; no search,
 fragment discovery, aggregation or refresh command is needed. Link both from the
-global index when planning exists. Never split them into per-operation files.
+global index when planning exists. Never split them into per-operation files; the
+only split is a rotation into sealed segments, listed in the live log's header.
 
 Append every operation through `python <skill-dir>/scripts/wiki_log.py <project-root>`
 (add `--planning` for plan operations), passing one entry as UTF-8 stdin or with
@@ -69,10 +70,44 @@ state. This mechanism covers local Git merges followed by push; it does not
 install a driver on a hosting service for server-side pull-request merges.
 
 The helper requires the log file to exist; normal Initialization creates it.
-`--read` simply prints the same canonical file for CLI compatibility. No evidence
-checker changes or reserved fragment directories are needed. Writers must all
-use the helper; direct edits, Git operations and article edits still require
-coordination. Index updates use the separate helper below.
+`--read` simply prints the same canonical file for CLI compatibility. No reserved
+fragment directories are needed. Writers must all use the helper; direct edits,
+Git operations and article edits still require coordination. Index updates use
+the separate helper below.
+
+### Rotating a log
+
+A live log that has grown costly to read can be rotated. Rotate only when the user
+asks, or as an item of an approved maintenance run (for example Deep Sleep); never
+as a side effect of Ingest, Plan or Lint. Pick a month or quarter boundary as the
+cutoff and keep recent work live.
+
+`python <skill-dir>/scripts/wiki_log.py <project-root> [--planning] --rotate YYYY-MM-DD`
+
+Under the log lock, the helper moves every entry whose heading date is before the
+cutoff, verbatim and with its ID, into `log-sealed-YYYY-MM-DD.md` beside the live
+log (`wiki/` or `wiki/planning/`, so the one-level layout holds). It creates that
+file once, never overwriting, and adds a seal line to the live log's header:
+
+```markdown
+- Sealed before 2026-11-01: [log-sealed-2026-11-01.md](log-sealed-2026-11-01.md) <!-- wiki-log-seal sha256:… -->
+```
+
+Rules:
+- A sealed segment is immutable, like raw/: never edit, move or delete it, and
+  never append to it. Undo a wrong rotation with version control, not by editing.
+- `--verify` checks every seal line against its segment's SHA-256 (taken over
+  LF line endings) and exits non-zero on a missing or changed segment.
+- A new cutoff must be later than the newest seal. Rotation rewrites the live log
+  with LF line endings; entries dated after the cutoff stay in place and in order.
+- Readers start at the live log and follow its seal lines for older history.
+  The live log plus its segments are the complete history. `check_evidence.py`
+  reads No material entries from `wiki/` segments too and skips segments as articles.
+- The merge driver accepts a branch that rotated: a base entry missing on that
+  side is dropped only when the side added a seal whose cutoff is after the entry's
+  date. Every other deletion still fails. Entries another branch appended later
+  stay in the live log, whatever their date. Rotate on one branch at a time: two
+  sides adding different seals fail for manual review. Segments need no driver.
 
 ### Concurrent index updates
 
@@ -353,7 +388,7 @@ Closing a plan does not update articles. If the implementation changed what arti
 
 - Plan pages carry no Raw field. `scripts/check_evidence.py` skips any page whose metadata header has a `Plan status:` line, as it skips archive pages, and it skips `wiki/planning/index.md` and `wiki/planning/log.md`. Facts that matter beyond the plan belong in articles, through Ingest.
 - Ingest never cascade-updates a plan page; only Revise and Close change it. Backlogs in `wiki/planning/` are ordinary articles: Ingest maintains them and updates their row in the planning index.
-- Never delete a plan page or a planning log entry. The status records how a plan ended.
+- Never delete a plan page or a planning log entry. The status records how a plan ended. Rotation moves entries into a sealed segment; it never deletes them.
 - Plan operations write `wiki/planning/` and refresh the Updated date of the `planning` row in `wiki/index.md`. They never write `wiki/log.md`.
 
 ---
@@ -366,12 +401,12 @@ Quality checks on the wiki. Three categories with different authority levels.
 
 Fix these automatically:
 
-**Index consistency** — compare `wiki/index.md` against actual wiki/ files (excluding index.md and log.md, and everything under `wiki/planning/`, which Planning index below covers):
+**Index consistency** — compare `wiki/index.md` against actual wiki/ files (excluding index.md, log.md and sealed `log-sealed-*.md` segments, and everything under `wiki/planning/`, which Planning index below covers):
 - File exists but missing from index → add entry with `(no summary)` placeholder. For Updated, use the article's metadata Updated date if present (for archive pages, the Archived date); otherwise fall back to file's last modified date.
 - Index entry points to nonexistent file → mark as `[MISSING]` in the index. Do not delete the entry; let the user decide.
 - Index entry's Updated differs from the article's metadata Updated (or Archived, for archive pages) → update the index entry to match the article.
 
-**Planning index** — compare `wiki/planning/index.md` against the files in `wiki/planning/` (excluding its index.md and log.md) with the three rules above. In addition:
+**Planning index** — compare `wiki/planning/index.md` against the files in `wiki/planning/` (excluding its index.md, log.md and sealed log segments) with the three rules above. In addition:
 - A plan row's Status, Closed and Audit differ from the plan's header → update the row to match the plan.
 - A plan row sits in the wrong section for its status → move it (Approved belongs in Active; every other status in Closed).
 - A row in `wiki/index.md` points into `wiki/planning/` other than the planning index row → move it to the planning index.
@@ -426,6 +461,14 @@ Append to `wiki/log.md` through the helper (see Concurrent operation logs):
 ## [YYYY-MM-DD] lint | <N> issues found, <M> auto-fixed
 ```
 
+An approved maintenance run that changes pages beyond Lint's safe fixes (for
+example Deep Sleep) logs one entry through the helper, naming its report:
+
+```
+## [YYYY-MM-DD] maintenance | <N> approved items applied
+- Report: <project-root-relative report path>
+```
+
 ---
 
 ## Conventions
@@ -434,4 +477,5 @@ Append to `wiki/log.md` through the helper (see Concurrent operation logs):
 - wiki/ supports one level of topic subdirectories only. No deeper nesting.
 - Today's date for log entries, Collected dates, and Archived dates. Updated dates reflect when the article's knowledge content last changed. Published dates come from the source (use `Unknown` when unavailable).
 - Inside wiki/ files, all markdown links use paths relative to the current file. In conversation output, use project-root-relative paths (e.g., `wiki/topic/article.md`).
+- Log rotation (see Rotating a log) runs only on request or as an approved maintenance item.
 - Ingest updates `wiki/index.md` and appends through the helper to `wiki/log.md` (a No material ingest updates only the log). Archive (from Query) updates both. Lint appends through the helper to `wiki/log.md` (and updates `wiki/index.md` or `wiki/planning/index.md` only when auto-fixing index entries). Plan operations append through the helper to `wiki/planning/log.md` and update `wiki/planning/` and the Updated date of the `planning` row in `wiki/index.md`, never the main log. Plain queries do not write any files.
